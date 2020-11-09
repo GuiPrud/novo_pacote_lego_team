@@ -99,7 +99,7 @@ class FollowTheGap(object):
 
 		self.behaviourControll(gapArray)
 
-		rospy.loginfo(str(estado))
+		#rospy.loginfo(str(estado))
 
 		if estado == 1: 
 			direc_msg = self.GapFollow(gapArray)
