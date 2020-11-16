@@ -7,10 +7,11 @@ from ackermann_msgs.msg import AckermannDriveStamped
 import math
 
 def callback(msg):
+	bolota = 1
 
 class FollowTheGap(object):
 
-    direc_msg = AckermannDriveStamped()
+    
 
     def __init__(self):
 
@@ -18,13 +19,13 @@ class FollowTheGap(object):
 
         #self.sub = rospy.Subscriber('/scan', LaserScan, callback)
 	#self.sub = rospy.Subscriber('/new_lego_team_id/scan', LaserScan, callback)
-
+	direc_msg = AckermannDriveStamped()
         rate = rospy.Rate(40)
 
         while not rospy.is_shutdown():
 
 		direc_msg.drive.speed = 0.1
-
+		direc_msg.drive.steering_angle = 0
 		gap_pub.publish(direc_msg)
 		rate.sleep()
 
@@ -33,7 +34,7 @@ def main():
 	rospy.init_node('new_lego_team_node', anonymous = False)
 
 	#self.sub = rospy.Subscriber('/scan', LaserScan, callback)
-	self.sub = rospy.Subscriber('/new_lego_team_id/scan', LaserScan, callback)
+	sub = rospy.Subscriber('/new_lego_team_id/scan', LaserScan, callback)
 
 	fg = FollowTheGap()
 	rospy.spin()
