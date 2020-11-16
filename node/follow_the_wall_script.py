@@ -106,7 +106,7 @@ class FollowTheGap(object):
 		else:
 			direc_msg = self.WallFollow(gapArray)
 
-		gap_pub.publish(direc_msg)
+		#gap_pub.publish(direc_msg)
 		rate.sleep()
             
             
