@@ -17,7 +17,7 @@ posicao_atual = Point(0,0,0);
 
 posicao = 2
 
-#os.chdir(r'/catkin_ws/src/novo_pacote_teste_lego_team/node')
+os.chdir(r'/root/catkin_ws/src/novo_pacote_teste_lego_team/node')
 def callback(msg):
 	global orientacao_atual
 	global posicao_atual
@@ -27,16 +27,16 @@ def callback(msg):
 #essa funcao abre um arquivo .csv e retorna um vetor com os dados presentes na linha passada como parametro
 def ler_csv(n_linha):
 	a = 1
-	#arquivo = open(r'pontos.csv', "r") #coloca o arquivo de pontos dentro do path do node, ou declara um path absoluto
+	arquivo = open(r'pontos.csv', "r") #coloca o arquivo de pontos dentro do path do node, ou declara um path absoluto
 			              #tipo "/home/luizfpastuch/Documents/trajectory_map/pontos.csv" pra deixar em uma pasta diferente (acho que precisa)
-	#linhas = arquivo.readlines() #le todas as linhas do arquivo
-	#linha = linhas[n_linha-1] #pega a linha que quer
-	#vetor_string = linha.split(',') #divide a linha a partir das virgulas (achei que seria mais dificil kk)
-	#vetor_float = [] #declara o novo vetor pra retornar
-	#for i in range(len(vetor_string)): #converte cada item do vetor de string pra float
-	#	vetor_float.append(float(vetor_string[i]))
-	#arquivo.close() #fecha o arquivo
-	#return vetor_float[0:2] #retorna o novo vetor
+	linhas = arquivo.readlines() #le todas as linhas do arquivo
+	linha = linhas[n_linha-1] #pega a linha que quer
+	vetor_string = linha.split(',') #divide a linha a partir das virgulas (achei que seria mais dificil kk)
+	vetor_float = [] #declara o novo vetor pra retornar
+	for i in range(len(vetor_string)): #converte cada item do vetor de string pra float
+		vetor_float.append(float(vetor_string[i]))
+	arquivo.close() #fecha o arquivo
+	return vetor_float[0:2] #retorna o novo vetor
 
 class FollowTheGap(object):    
 
@@ -53,7 +53,7 @@ class FollowTheGap(object):
 
 		angulo_atual = 2*math.asin(orientacao_atual.z)		
 		
-		rospy.loginfo(str(os.getcwd()))	
+		#rospy.loginfo(str(os.getcwd()))	
 		
 		# Essas condições servem para que os angulos fiquem entre 0<theta<180 e 0>theta>-180
 
@@ -80,8 +80,8 @@ class FollowTheGap(object):
 		if(distancia_objetivo < 0.5):			
 			posicao = posicao + 1
 
-		#novo_objetivo = ler_csv(posicao)
-		#posicao_objetivo = Point(x = novo_objetivo[0], y = novo_objetivo[1])
+		novo_objetivo = ler_csv(posicao)
+		posicao_objetivo = Point(x = novo_objetivo[0], y = novo_objetivo[1])
 						
 		#if(distancia_objetivo < 0.5):
 		#	if(posicao == 1):
