@@ -18,7 +18,6 @@ posicao_atual = Point(0,0,0);
 posicao = 2
 
 #os.chdir(r'/catkin_ws/src/novo_pacote_teste_lego_team/node')
-rospy.loginfo(str(os.getcwd()))
 def callback(msg):
 	global orientacao_atual
 	global posicao_atual
@@ -52,7 +51,9 @@ class FollowTheGap(object):
 		global orientacao_atual
 		global posicao_objetivo
 
-		angulo_atual = 2*math.asin(orientacao_atual.z)			
+		angulo_atual = 2*math.asin(orientacao_atual.z)		
+		
+		rospy.loginfo(str(os.getcwd()))	
 		
 		# Essas condições servem para que os angulos fiquem entre 0<theta<180 e 0>theta>-180
 
