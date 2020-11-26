@@ -4,253 +4,111 @@ import rospy
 import time
 from sensor_msgs.msg import LaserScan
 from ackermann_msgs.msg import AckermannDriveStamped
+from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Point
+from geometry_msgs.msg import Quaternion
 import math
+import os
 
-    
-gapArray = [0]
-bestGapTu = ()
-erro_anterior = 0
-mux_switch_count = 0
-estado = 0
+orientacao_objetivo = Quaternion(x=0,y=0,z=0,w=0)
+orientacao_atual = Quaternion(x=0,y=0,z=0,w=0)
+posicao_objetivo = Point(x = 5, y = 5)
+posicao_atual = Point(0,0,0);
 
-def corrigeGap(lista, valorMin, x = 3):
-    """
-    Entradas são a lista de valores lidos pelo lidar o valorMinimo que é um float, e x que é um inteiro.
-    Retorna a lista transformando todos os valores menores do que o valor minimo, e x de seus adjacentes em 0
-    Ordem de grandeza máximo (2x+1)n+n -> O(n)
-    Funciionamento: Varre a lista guardando o index dos valoress menores ou iguais ao valorMin em uma lista. Depois,
-    usando essa lista de indexamentos, a função modifica o valor indexado e x valores, para mais e menos, para zero.
-    """
-    newlista= []
-    for c in range(len(lista)):
-        if lista[c] <= valorMin:
-            newlista.append(c)
-    for n in newlista:
-        for i in range(2*x+1):
-            a=(n + x - i)
-            if   a >= 0 and a < len(lista):
-                lista[a] = 0
-    return lista
+posicao = 2
+
+os.chdir(r'/catkin_ws/src/novo_pacote_teste_lego_team/node')
 
 def callback(msg):
-    '''
-    Função que é ativada a cada leitura do scan e atualiza a "gap array"
-    aumentando os obstáculos proximos para auxiliar a escolha da melhor direção.
-    '''
-    global estado
-    global gapArray
-    # define-se o arco de visão onde estamos procurando os obstáculos, e a menor distância entre o carro e os obstáculos.
-    rangeMax=int(270*1080/360)
-    rangeMin=int(90*1080/360)
-    
-    tempList=list(msg.ranges[rangeMin:rangeMax])    
+	global orientacao_atual
+	global posicao_atual
+	orientacao_atual = msg.pose.pose.orientation
+	posicao_atual = msg.pose.pose.position
 
-    #rospy.loginfo(str(estado))
-    # atualiza o gapArray com a leitura atual
-    gapArray=tempList[:]
+#essa funcao abre um arquivo .csv e retorna um vetor com os dados presentes na linha passada como parametro
+def ler_csv(n_linha):
+	arquivo = open(r'pontos.csv', "r") #coloca o arquivo de pontos dentro do path do node, ou declara um path absoluto
+			              #tipo "/home/luizfpastuch/Documents/trajectory_map/pontos.csv" pra deixar em uma pasta diferente (acho que precisa)
+	linhas = arquivo.readlines() #le todas as linhas do arquivo
+	linha = linhas[n_linha-1] #pega a linha que quer
+	vetor_string = linha.split(',') #divide a linha a partir das virgulas (achei que seria mais dificil kk)
+	vetor_float = [] #declara o novo vetor pra retornar
+	for i in range(len(vetor_string)): #converte cada item do vetor de string pra float
+		vetor_float.append(float(vetor_string[i]))
+	arquivo.close() #fecha o arquivo
+	return vetor_float[0:2] #retorna o novo vetor
 
-def melhorGap(listaGaps):
-    """
-    Entrada é uma lista de valores de lacunas e zeros.
-    Retornar um tuple com o primeiro valor sendo o index central do melhor lacuna de não zeros dessa lista,
-    o segundo valor sendo o numero de valores tem essa lacuna, o terceiro o valor da média desses numeros, e o
-    quarto o numero de valores que tem a lista.
-    Ordem de grandeza -> O(n²)
-    """
+class FollowTheGap(object):    
 
-    melhorTupla=(0, 0, 0, 0)
-    tamLista=len(listaGaps)
-    for v in range(len(listaGaps)):
-        listaNova=[]
-        med = 0
-        centro=0
-        tamLac=0
-        if listaGaps[v] > 0:
-            for i in range(len(listaGaps)-v):
-                if listaGaps[v+i]>0:
-                    listaNova.append(listaGaps[v+i])
-                else:
-                    break
-            tamLac=len(listaNova)
-            med=sum(listaNova)/len(listaNova)
-            centro=v+int(len(listaNova)/2)
-            if tamLac>melhorTupla[1] or (tamLac==melhorTupla[1] and med>melhorTupla[2]):
-                melhorTupla=(centro, tamLac, med, tamLista)
-
-    return melhorTupla
-
-
-class FollowTheGap(object):
-
-    direc_msg = AckermannDriveStamped()
-
-    def __init__(self):
-
-        rospy.init_node('new_lego_team_node', anonymous = False)
-
-        #self.sub = rospy.Subscriber('/scan', LaserScan, callback)
-	self.sub = rospy.Subscriber('/new_lego_team_id/scan', LaserScan, callback)
-
-        rate = rospy.Rate(40)
-
+    def __init__(self):	
+	
+	#rospy.loginfo(str(objetivo.x))
+	rate = rospy.Rate(40)
+	direc_msg = AckermannDriveStamped()
         while not rospy.is_shutdown():
-		global gapArray
-		global estado
 
-		self.behaviourControll(gapArray)
+		global orientacao_objetivo
+		global orientacao_atual
+		global posicao_objetivo
 
-		#rospy.loginfo(str(estado))
+		angulo_atual = 2*math.asin(orientacao_atual.z)			
+		
+		# Essas condições servem para que os angulos fiquem entre 0<theta<180 e 0>theta>-180
 
-		if estado == 1: 
-			direc_msg = self.GapFollow(gapArray)
-		else:
-			direc_msg = self.WallFollow(gapArray)
+		if(posicao_atual.x < posicao_objetivo.x):
+			angulo_objetivo = math.atan((posicao_objetivo.y - posicao_atual.y)/(posicao_objetivo.x - posicao_atual.x))				
+		else:	
+			if (posicao_atual.y < posicao_objetivo.y):
+				angulo_objetivo = math.pi+math.atan((posicao_objetivo.y - posicao_atual.y)/(posicao_objetivo.x - posicao_atual.x))	
+			else:
+				angulo_objetivo = -math.pi+math.atan((posicao_objetivo.y - posicao_atual.y)/(posicao_objetivo.x - posicao_atual.x))	
+		
+		#rospy.loginfo(str(angulo_objetivo*180/math.pi))
+		erro = angulo_objetivo -angulo_atual
+
+		Kerro = -1	
+		K = 1
+
+		distancia_objetivo = math.sqrt(math.pow((posicao_objetivo.y - posicao_atual.y),2) + math.pow((posicao_objetivo.x - posicao_atual.x),2))
+
+		#velocidade = Kerro*abs(erro)+K*distancia_objetivo/27
+		global posicao
+		velocidade = 4
+		
+		if(distancia_objetivo < 0.5):			
+			posicao = posicao + 1
+
+		novo_objetivo = ler_csv(posicao)
+		posicao_objetivo = Point(x = novo_objetivo[0], y = novo_objetivo[1])
+						
+		#if(distancia_objetivo < 0.5):
+		#	if(posicao == 1):
+		#		posicao_objetivo = Point(x = 15, y = 9)
+		#		posicao = 2
+		#	elif(posicao == 2):
+		#		posicao_objetivo = Point(x = 18, y = 5)
+		#		posicao = 3
+		#	elif(posicao == 3):
+		#		posicao_objetivo = Point(x = 13, y = 0)
+		#		posicao = 1
+
+		direc_msg.drive.speed = velocidade
+		direc_msg.drive.steering_angle = erro
 
 		gap_pub.publish(direc_msg)
 		rate.sleep()
-            
-            
-    def GapFollow(self, listaScan):
-        
-        minDist = 4.0
-        GPArray=corrigeGap(listaScan, minDist, 20)
-        direc_msg = AckermannDriveStamped()
-        direc_msg.drive.steering_angle = 0
 
-        direc_msg.drive.speed = 0.0
-        
-        global gap_pub
-
-        gapTuple=melhorGap(GPArray)
-        frente=[0]
-        pontoAdiante=0
-        
-        if len(listaScan) > 1:
-            frente=listaScan[int(gapTuple[3]/2)-4:int(gapTuple[3]/2)+5]
-            pontoAdiante=listaScan[90*3]
-
-        if not gapTuple == (0,0,0,0):
-
-            if ((gapTuple[0]-int(gapTuple[3]/2)) > 2*int(gapTuple[3]/3)) or ((gapTuple[0]-int(gapTuple[3]/2)) < (0 - 2*int(gapTuple[3]/3))):  
-                direc_msg.drive.steering_angle = ((gapTuple[0]-int(gapTuple[3]/2))*0.4/(gapTuple[3]/2))
-
-            elif ((gapTuple[0]-int(gapTuple[3]/2)) < int(gapTuple[3]/3)) and ((gapTuple[0]-int(gapTuple[3]/2)) > (0 - int(gapTuple[3]/3))):
-                direc_msg.drive.steering_angle = ((gapTuple[0]-int(gapTuple[3]/2))*0.5/(gapTuple[3]/2))
-
-            else:
-                direc_msg.drive.steering_angle = ((gapTuple[0]-int(gapTuple[3]/2))*0.4/(gapTuple[3]/2))
-
-	if(pontoAdiante < 5):
-        	direc_msg.drive.speed = 1*pontoAdiante
-
-	elif(pontoAdiante < 10):
-        	direc_msg.drive.speed = 0.8*pontoAdiante  
-
-	else:
-        	direc_msg.drive.speed = 0.4*pontoAdiante  
-        
-	if pontoAdiante < 0.2:
-       		direc_msg.drive.speed = 2
-        return direc_msg
-
-    def behaviourControll(self, listaScan):
-        
-        dist_min_existe = False
-        indice_min=0
-        indice_max=0
-        if len(listaScan) > 1:
-            indice_min = 80*3
-            indice_max = 100*3
-        
-        global estado
-        global gapArray
-        global mux_switch_count
-      
-        distancia = min(listaScan[indice_min:indice_max+1])
-    
-        if (distancia < 4):
-            dist_min_existe = True
-
-        if (dist_min_existe == True and estado == 0): 
-            estado = 1
-    
-        if estado == 1:
-
-            mux_switch_count += 1
-
-            if dist_min_existe == True:
-                mux_switch_count = 0
-
-            if (mux_switch_count > 10 and dist_min_existe == False):
-                estado = 0
-                mux_switch_count = 0
-                
-    def WallFollow(self, listaScan):
-
-        wall_avoid_msg = AckermannDriveStamped()
-	
-        if len(listaScan) > 1:        	
-
-		distancia_direita = listaScan[0]
-		distancia_esquerda = listaScan[len(listaScan)-1]
-
-		theta = 45
-		set_point = (distancia_direita + distancia_esquerda)/2
-		
-
-		a = listaScan[3*145]
-		b = listaScan[len(listaScan)-1]
-
-		if (a > 0.01 and b > 0.01):
-
-			alpha = math.atan((a*math.cos(theta)-b)/(a*math.sin(theta)))
-			AB = b*math.cos(alpha)
-
-			# AC eh a distancia que o carro eh projetado
-			AC = 0.5
-			CD = AB + AC*math.sin(alpha)
-
-			Kp = 0.3
-			Kd = 0.1
-
-			erro_atual = set_point - CD
-			global erro_anterior
-
-			acao_de_controle = Kp*erro_atual+Kd*(erro_atual - erro_anterior)
-
-			obstaculo_adiante = min(listaScan[89*3:91*3]);
-
-			Kerro = -30
-			
-			if(Kerro*abs(erro_atual) + 8 > 3):
-
-				if(obstaculo_adiante > 7):
-					wall_avoid_msg.drive.speed = Kerro*abs(erro_atual) + 8
-
-				else:
-					if(Kerro*abs(erro_atual) + 8/obstaculo_adiante > 3):
-						wall_avoid_msg.drive.speed = Kerro*abs(erro_atual) + 8/listaScan[90*3]
-
-					else:
-						wall_avoid_msg.drive.speed = 3
-			else:
-				wall_avoid_msg.drive.speed = 3
-			    
-			wall_avoid_msg.drive.steering_angle = -acao_de_controle
-
-			erro_anterior = erro_atual
-	else:
-		wall_avoid_msg.drive.speed = 2
-		wall_avoid_msg.drive.steering_angle = 0
-
-        return wall_avoid_msg
 
 def main():
+	rospy.init_node('new_lego_team_node', anonymous = False)
 
-    fg = FollowTheGap()
-    rospy.spin()
+	#self.sub = rospy.Subscriber('/scan', LaserScan, callback)
+	sub = rospy.Subscriber('/new_lego_team_id/odom', Odometry, callback)
 
-#gap_pub = rospy.Publisher('/drive', AckermannDriveStamped, queue_size=10)
+	fg = FollowTheGap()
+	rospy.spin()
+
+
 gap_pub = rospy.Publisher('/new_lego_team_id/drive', AckermannDriveStamped, queue_size=10)
 
 main()
