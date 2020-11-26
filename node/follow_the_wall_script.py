@@ -18,7 +18,7 @@ posicao_atual = Point(0,0,0);
 posicao = 2
 
 #os.chdir(r'/catkin_ws/src/novo_pacote_teste_lego_team/node')
-print(os.getcwd())
+rospy.loginfo(str(os.getcwd()))
 def callback(msg):
 	global orientacao_atual
 	global posicao_atual
