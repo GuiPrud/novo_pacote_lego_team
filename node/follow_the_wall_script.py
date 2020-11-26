@@ -27,6 +27,7 @@ def callback(msg):
 
 #essa funcao abre um arquivo .csv e retorna um vetor com os dados presentes na linha passada como parametro
 def ler_csv(n_linha):
+	a = 1
 	#arquivo = open(r'pontos.csv', "r") #coloca o arquivo de pontos dentro do path do node, ou declara um path absoluto
 			              #tipo "/home/luizfpastuch/Documents/trajectory_map/pontos.csv" pra deixar em uma pasta diferente (acho que precisa)
 	#linhas = arquivo.readlines() #le todas as linhas do arquivo
