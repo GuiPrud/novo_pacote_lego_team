@@ -249,7 +249,6 @@ posicao_atual = Point(0,0,0);
 
 posicao = 1
 
-os.chdir(r'/root/catkin_ws/src/novo_pacote_teste_lego_team/node')
 def callback(msg):
 	global orientacao_atual
 	global posicao_atual
